@@ -1336,7 +1336,7 @@ begin
 
 	if not Assigned(@_ZSTD_versionNumber) then
 	begin
-		Result := 0;
+		//Result := 0;
 		RaiseLastOSError(ERROR_PROC_NOT_FOUND);
 	end;
 

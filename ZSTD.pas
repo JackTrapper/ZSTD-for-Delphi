@@ -132,14 +132,8 @@ type
 										* Special: value 0 means "use default maximum windowLog". *)
 	end;
 
-procedure ZSTDCompressStream(ASource, ADest: TStream; ACount: Int64=0);
-procedure ZSTDDecompressStream(ASource, ADest: TStream; ACount: Int64=0);
-
-procedure ZSTDDecompressFile(SourceFilename: string; DecompressedFilename: string);
-
-function ZSTDDecompressBytes(SourceBuffer: AnsiString): AnsiString;
-
 type
+	// Compress data as it is written out to a destination stream
 	TZSTDCompressStream = class(TStream)
 	private
 		FDest: TStream;
@@ -155,13 +149,14 @@ type
 
 		class function MaxLevel: Integer;
 
-		function Seek(const AOffset: Int64; AOrigin: TSeekOrigin): Int64; override;
-		function Read(var ABuffer; ACount: Longint): Longint; override;
 		function Write(const ABuffer; ACount: Longint): Longint; override;
+		function Seek(const AOffset: Int64; AOrigin: TSeekOrigin): Int64; override; // Do not use
+		function Read(var ABuffer; ACount: Longint): Longint; override;             // Do not use
 
 		property CompressionOptions: TZSTDCompressOptions read FCompressionOptions;
 	end;
 
+	// Decompress as data is read from a source stream
 	TZSTDDecompressStream = class(TStream)
 	private
 		FSource: TStream;
@@ -183,10 +178,21 @@ type
 		constructor Create(ASource: TStream; const AOption: TZSTDDecompressOptions); overload;
 		destructor Destroy; override;
 
-		function Seek(const AOffset: Int64; AOrigin: TSeekOrigin): Int64; override;
 		function Read(var ABuffer; ACount: Longint): Longint; override;
-		function Write(const ABuffer; ACount: Longint): Longint; override;
+		function Seek(const AOffset: Int64; AOrigin: TSeekOrigin): Int64; override;	// you may only seek forward from current position
+		function Write(const ABuffer; ACount: Longint): Longint; override;				// do not use
 	end;
+
+	// Helper functions
+
+	procedure ZSTDCompressStream(ASource, ADest: TStream; ACount: Int64=0);
+
+	procedure ZSTDDecompressStream(ASource, ADest: TStream; ACount: Int64=0);
+
+	procedure ZSTDDecompressFile(SourceFilename: string; DecompressedFilename: string);
+
+	function ZSTDDecompressBytes(SourceBuffer: AnsiString): AnsiString;
+
 
 implementation
 
@@ -231,10 +237,10 @@ begin
 				end;
 			end;
 		finally
-			CompressStream.Free;
+			compressStream.Free;
 		end;
 	finally
-		FreeMem(Buffer);
+		FreeMem(buffer);
 	end;
 end;
 
@@ -292,24 +298,28 @@ var
 	fsSource: TFileStream;
 	fsDest: TFileStream;
 begin
+	if SourceFilename = '' then
+		raise Exception.Create('[ZSTDDecompressFile] SourceFilename is required');
+	if DecompressedFilename = '' then
+		raise Exception.Create('[ZSTDDecompressFile] DecompressedFilename is required');
+
+
 	fsSource := TFileStream.Create(SourceFilename, fmOpenRead or fmShareDenyNone);
-	fsDest := TFileStream.Create(DecompressedFilename, fmCreate or fmShareDenyNone);
 	try
-		ZSTDDecompressStream(fsSource, fsDest);
+		fsDest := TFileStream.Create(DecompressedFilename, fmCreate or fmShareDenyNone);
+		try
+			ZSTDDecompressStream(fsSource, fsDest);
+		finally
+			FreeAndNil(fsDest);
+		end;
 	finally
 		FreeAndNil(fsSource);
-		FreeAndNil(fsDest);
 	end;
 end;
 
 function ZSTDDecompressBytes(SourceBuffer: AnsiString): AnsiString;
 var
 	res: size_t;
-	input: ZSTD_inBuffer;
-
-	outputBufferSize: size_t;
-	outputBuffer: Pointer;
-	output: ZSTD_outBuffer;
 begin
 	SetLength(Result, 0);
 
@@ -322,63 +332,6 @@ begin
 	res := ZSTD_decompress(Pointer(Result), Length(Result), Pointer(SourceBuffer), Length(SourceBuffer));
 	ZSTDCheck(SZSTD_decompress, res);
 	SetLength(Result, res);
-
-	Exit;
-
-{
-	// Setup input buffer
-	input.src := Pointer(SourceBuffer);
-	input.size := Length(SourceBuffer);
-	input.pos := 0;
-
-	outputBufferSize := ZSTD_DStreamOutSize();
-	GetMem(outputBuffer, outputBufferSize);
-	output.dst := outputBuffer;
-	output.size := outputBufferSize;
-
-		FStream := ZSTD_createDStream;
-		if not Assigned(FStream) then
-			raise EOutOfMemory.Create('');
-		ZSTDCheck(sZSTD_initDStream, ZSTD_initDStream(FStream));
-		ZSTDCheck(sZSTD_DCtx_setParameter, ZSTD_DCtx_setParameter(FStream, ZSTD_d_windowLogMax, FOptions.WindowLog));
-
-		LoadEmbeddedDictionary(FSource, FStream);
-	end;
-
-	buffer := @ABuffer;
-	while ACount > 0 do
-	begin
-		availableCount := FOutput.pos - FStreamOutBufferSizePos;
-		if Integer(availableCount) > ACount then
-			availableCount := ACount;
-		if availableCount > 0 then
-		begin
-			Source := FStreamOutBuffer;
-			Inc(Source, FStreamOutBufferSizePos);
-			CopyMemory(buffer, source, availableCount);
-			Inc(FStreamOutBufferSizePos, availableCount);
-			Inc(buffer, availableCount);
-			Dec(ACount, availableCount);
-			Inc(Result, availableCount);
-			Inc(FPosition, availableCount);
-			if ACount = 0 then
-				Break;
-		end;
-
-		FOutput.pos := 0;
-		FStreamOutBufferSizePos := 0;
-
-		if (FInput.pos = FInput.size) and (FInput.size > 0) then
-		begin
-			FInput.size := FSource.Read(FStreamInBuffer^, FInput.size);
-			FInput.pos := 0;
-		end;
-
-		ZSTDCheck(sZSTD_decompressStream, ZSTD_decompressStream(FStream, FOutput, FInput));
-		if (FOutput.pos = 0) and (FInput.size = 0) then
-			Break;
-	end;
-}
 end;
 
 //**************************************************************************************************
@@ -709,7 +662,7 @@ end;
 
 procedure TZSTDCompressStream.ValidateCompressionOptions(const Options: TZSTDCompressOptions);
 
-	procedure CheckBounds(Value: size_t; Parameter: ZSTD_cParameter);
+	procedure CheckBounds(Value: Integer; Parameter: ZSTD_cParameter);
 	var
 		bounds: ZSTD_bounds;
 	begin
