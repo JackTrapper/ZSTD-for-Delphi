@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+
+    <assemblyIdentity 
+           type="win32"
+           name="Facebook.Zstandard"
+           processorArchitecture="x86"
+           version="1.5.5.0" />
+
+    <!-- Zstandard Library File -->
+    <file name="zstdlib.dll" hash="184AE4B84CDB2F990B12458689E261F612C25DB1" hashalg="SHA1" />
+
+</assembly>
