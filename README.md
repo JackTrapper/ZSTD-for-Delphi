@@ -74,5 +74,5 @@ WARC makes use of this [Skippable frames](...todo add url.) feature. The WARC st
 
 This dictionary is then supposed to be supplied to the Zstandard decoder through the [**ZSTD_DCtx_loadDictionary API**](https://facebook.github.io/zstd/zstd_manual.html#Chapter13) function. If the dictionary is compressed, it must first be decompressed using Zstandard, before supplying it to **ZSTD_DCtx_loadDictionary**.
 
-ZSTD-for-Delphi honors this WARC extension of the standard, and will look for the dictionary frame, and pass it to Zstandard as the dictionary to use.
+ZSTD-for-Delphi honors this WARC extension of the standard, and will look for the dictionary frame, and pass it to Zstandard as the dictionary to use. [Here](https://github.com/facebook/zstd/pull/2349) is the pull request to include this behavior in the Zstandard specification.
 
