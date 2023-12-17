@@ -1348,7 +1348,7 @@ begin
 	InitZSTD;
 	if not Assigned(@_ZSTD_versionString) then
 	begin
-		Result := nil;
+		//Result := nil;
 		RaiseLastOSError(ERROR_PROC_NOT_FOUND);
 	end;
 
