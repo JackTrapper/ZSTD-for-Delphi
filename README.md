@@ -65,7 +65,7 @@ The `.zst` file format is a collection of frames, each identified by a 4-byte pr
 - `0xEC30A437` - Zstandard dictionary, used for files containing a compression or decompression dictionary.
 - `0x184D2A50` to `0x184D2A5F` - Range for skippable frames, allowing the inclusion of non-compressed data or metadata in a Zstandard stream.
 
-Frames with a magic number between `0x184D2A50` to `0x184D2A5F` will be skipped by any standards-compliant decoder that doesn't recognize the magic number. These frames allow the inclusion of future non-compressed or other metata. 
+Frames with a magic number between `0x184D2A50` to `0x184D2A5F` will be skipped by any standards-compliant decoder that doesn't recognize the magic number. These frames allow the inclusion of future non-compressed or other metadata. 
 
 WARC makes use of this [Skippable frames](...todo add url.) feature. The WARC standard defines the ability to optionally prefix a `.zst` file with a skippable frame `0x184D2A5D`. This frame contains the *dictionary* that is to be supplied to the Zstandard decompressor. The dictionary can either be compressed or uncompressed:
 
